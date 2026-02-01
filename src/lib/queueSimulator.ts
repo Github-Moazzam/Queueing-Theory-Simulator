@@ -345,7 +345,7 @@ export function runSimulation(params: SimulationParams): SimulationResult {
   }
 
   // Track completed customers for final record creation
-  const completedCustomers: Map<number, { customer: QueuedCustomer; waitTime: number; responseTime: number; endTime: number; serverId: number }> = new Map();
+  const completedCustomers: Map<number, { customer: QueuedCustomer; endTime: number; serverId: number }> = new Map();
 
   // Process customers through the simulation
   let customerIndex = 0;
@@ -471,16 +471,13 @@ export function runSimulation(params: SimulationParams): SimulationResult {
     } else if (nextEventType === 'departure' && departingServerIndex !== -1) {
       const server = servers[departingServerIndex];
       const finishedCustomer = server.customer!;
-      
-      // Record completed customer
-      const waitTime = Math.round(((finishedCustomer.firstStartTime || currentTime) - finishedCustomer.arrivalTime) * 100) / 100;
-      const endTime = currentTime;
-      
+      console.log(finishedCustomer)
+
+      // FIX: Only store endTime and serverId here.
+      // Turnaround, WaitTime, and ResponseTime are all derived in the final loop below.
       completedCustomers.set(finishedCustomer.id, {
         customer: finishedCustomer,
-        waitTime: waitTime,
-        responseTime: waitTime,
-        endTime: endTime,
+        endTime: currentTime,
         serverId: server.id
       });
       
@@ -511,8 +508,21 @@ export function runSimulation(params: SimulationParams): SimulationResult {
   }
 
   // Build final customer records from completed customers
+  // ─────────────────────────────────────────────────────
+  // Formulas applied here:
+  //   Turnaround   = EndTime    - ArrivalTime
+  //   WaitTime     = Turnaround - ServiceTime
+  //   ResponseTime = StartTime  - ArrivalTime
+  // ─────────────────────────────────────────────────────
   for (const [id, data] of completedCustomers) {
     const c = data.customer;
+
+    const startTime  = c.firstStartTime ?? c.arrivalTime;
+    const endTime    = data.endTime;
+    const turnAround = Math.round((endTime - c.arrivalTime) * 100) / 100;
+    const waitTime   = Math.round((turnAround - c.serviceTime) * 100) / 100;
+    const responseTime = Math.round((startTime - c.arrivalTime) * 100) / 100;
+
     customers.push({
       id: c.id,
       randomNum: c.randomNum,
@@ -522,11 +532,11 @@ export function runSimulation(params: SimulationParams): SimulationResult {
       priority: c.priority,
       serviceTime: c.serviceTime,
       serviceRandomNum: c.serviceRandomNum,
-      startTime: c.firstStartTime || c.arrivalTime,
-      endTime: data.endTime,
-      turnAround: Math.round((data.endTime - c.arrivalTime) * 100) / 100,
-      waitTime: data.waitTime,
-      responseTime: data.responseTime,
+      startTime: startTime,
+      endTime: endTime,
+      turnAround: turnAround,
+      waitTime: waitTime,
+      responseTime: responseTime,
       serverId: data.serverId
     });
   }
