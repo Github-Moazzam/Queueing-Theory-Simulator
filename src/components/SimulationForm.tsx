@@ -240,7 +240,7 @@ export function SimulationForm({ onRunSimulation, isRunning }: SimulationFormPro
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Lambda (μ)</Label>
+                  <Label className="text-xs text-muted-foreground">Mu (μ)</Label>
                   <Input
                     type="number"
                     value={serviceRate}
